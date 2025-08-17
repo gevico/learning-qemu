@@ -46,7 +46,7 @@ TARGET_PREFIX=tests/gevico/tcg/$(TARGET):$(SPACE)
 
 case-inc = $(eval COUNT=$(shell expr $(value COUNT) + 1))
 
-quiet-@ = $(if $(V),,@$(if $1,printf "  %-8s%3s/%s   %-20s %s\n" \
+quiet-@ = $(if $(V),,@$(if $1,printf "  %-8s%3s/%s   %-30s %s\n" \
           "$(strip $1)" "$(COUNT)" $(words $(TEST_CASES)) \
           "$(strip $2)" "$(strip $3)" && ))
 quiet-command = $(call quiet-@,$2,$3,$4)$1 && echo $(COUNT) > result.log
@@ -57,10 +57,10 @@ cc-option = if $(call cc-test, $1); then \
     echo "$(TARGET_PREFIX)$1 not detected"; fi
 
 # $1 = test name, $2 = cmd, $3 = desc, $4 = timeout
-run-test = $(case-inc) $(call quiet-command, timeout -s KILL --foreground $(TIMEOUT) $2 > $1.out, \
+run-test = $(case-inc) $(call quiet-command, timeout -s KILL --foreground $4 $2 > $1.out, \
 	TEST,$(or $3, $*, $<) on $(TARGET_NAME))
-
-
+gdbstub-test = $(call quiet-command, timeout -s KILL --foreground $4 $2 > $1.out, \
+	TEST,$(or $3, $*, $<) on $(TARGET_NAME))
 
 # $1 = test name, $2 = reference
 # to work around the pipe squashing the status we only pipe the result if

@@ -7,13 +7,50 @@
  */
 
 #include "crt.h"
+#include "pl011.h"
+
+#define PL011_IO_BASE        0x10000000UL
+#define UART_DR        0x00 /* data register */
+#define UART_RSR_ECR    0x04 /* receive status or error clear */
+#define UART_DMAWM    0x08 /* DMA watermark configure */
+#define UART_TIMEOUT    0x0C /* Timeout period */
+
+/* reserved space */
+#define UART_FR        0x18 /* flag register */
+#define UART_ILPR    0x20 /* IrDA low-poer */
+#define UART_IBRD    0x24 /* integer baud register */
+#define UART_FBRD    0x28 /* fractional baud register */
+#define UART_LCR_H    0x2C /* line control register */
+#define UART_CR        0x30 /* control register */
+#define UART_IFLS    0x34 /* interrupt FIFO level select */
+#define UART_IMSC    0x38 /* interrupt mask set/clear */
+#define UART_RIS    0x3C /* raw interrupt register */
+#define UART_MIS    0x40 /* masked interrupt register */
+#define UART_ICR    0x44 /* interrupt clear register */
+#define UART_DMACR    0x48 /* DMA control register */
+
+/* flag register bits */
+#define UART_FR_RTXDIS    (1 << 13)
+#define UART_FR_TERI    (1 << 12)
+#define UART_FR_DDCD    (1 << 11)
+#define UART_FR_DDSR    (1 << 10)
+#define UART_FR_DCTS    (1 << 9)
+#define UART_FR_RI    (1 << 8)
+#define UART_FR_TXFE    (1 << 7)
+#define UART_FR_RXFF    (1 << 6)
+#define UART_FR_TXFF    (1 << 5)
+#define UART_FR_RXFE    (1 << 4)
+#define UART_FR_BUSY    (1 << 3)
+#define UART_FR_DCD    (1 << 2)
+#define UART_FR_DSR    (1 << 1)
+#define UART_FR_CTS    (1 << 0)
 
 static char *printbuf = (char *)0x82000000UL;
 static uint32_t printlen[256];
 static double exp10_table[] = {1e1L, 1e2L, 1e4L, 1e8L, 1e16L, 1e32L, 1e64L,
                                1e128L, 1e256L};
 
-#define BUFLEN 0x10000
+#define BUFLEN 0x1000
 #define DEFAULT_PREC 6
 #define GET_MAX(m, n) (m > n ? m : n)
 #define GET_MIN(m, n) (m < n ? m : n)
@@ -467,11 +504,31 @@ static int my_vsnprintf(char *out, size_t n, const char *s, va_list vl)
     return printlen[HARTID];
 }
 
-#define UART8250_IO_BASE        0x10000000UL
+static inline uint32_t io_read32(uint64_t addr)
+{
+    return *((volatile uint32_t *)(uintptr_t)addr); /* read register */
+}
+
+static inline void io_write32(uint64_t addr, uint32_t val)
+{
+    *((volatile uint32_t *)(uintptr_t)addr) = val; /* write register */
+}
+
+static void pl011_putc(int ch)
+{
+    uint32_t uart_base = PL011_IO_BASE;
+
+    /* Wait until there is space in the FIFO or device is disabled */
+    while (io_read32(uart_base + UART_FR) & UART_FR_TXFF) {
+        /* nothing */
+    };
+
+    /* Send the character */
+    io_write32(uart_base + UART_DR, ch);
+}
+
 int printf(const char *s, ...)
 {
-    unsigned long uart_base = UART8250_IO_BASE;
-
     va_list vl;
     va_start(vl, s);
     char *core_printbuf = HARTID * BUFLEN + printbuf;
@@ -479,11 +536,9 @@ int printf(const char *s, ...)
     va_end(vl);
 
     for (char *ch = core_printbuf; *ch; ch++) {
-        while (((*(unsigned char *)(uart_base + 5)) & 0x20) == 0) {
-            /* nothing */
-        };
-        *(unsigned char *)uart_base = *ch;
+        pl011_putc(*ch);
     }
+
     memset(core_printbuf, 0, res);
     printlen[HARTID] = 0;
     return res;

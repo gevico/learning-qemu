@@ -12,14 +12,15 @@ CRT_SCRIPT = $(TEST_SRC)/crt/crt.S \
 LDFLAGS = -T $(LINK_SCRIPT)
 CFLAGS += -I$(TEST_SRC)/crt/ \
           -g -Og -static \
+          -march=rv64gcv -mabi=lp64d \
           -mcmodel=medany \
           -Wa,--noexecstack \
           -fvisibility=hidden -nostdlib \
           -Wl,--build-id=none \
           -fno-builtin -mrelax
 
-%: %.c $(LINK_SCRIPT)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CRT_SCRIPT) $< -o $@
+%: %.c $(CRT_SCRIPT) $(LINK_SCRIPT)
+	$(CC) $(CFLAGS) $(CRT_SCRIPT) $(LDFLAGS) $< -o $@
 
 define QEMU_OPTS
 -M $(1) -m 2G \
@@ -30,14 +31,14 @@ define QEMU_OPTS
 $(3)
 endef
 
-TEST_CASES := virt
+TEST_CASES := board-g233 insn-dma insn-sort insn-crush insn-expand
 
 define case_template
 EXTRA_RUNS += run-$(1)
 run-$(1): test-$(1)
-	$(call run-test, $$<, $(QEMU) $(call QEMU_OPTS,virt,$$<), $$<, $(TIMEOUT))
+	$(call run-test, $$<, $(QEMU) $(call QEMU_OPTS,g233,$$<), $$<, $(TIMEOUT))
 gdbstub-$(1): test-$(1)
-	$(call run-test, $$<, $(QEMU) $(call QEMU_OPTS,virt,$$<, -s -S), $$<, 3600)
+	$(call gdbstub-test, $$<, $(QEMU) $(call QEMU_OPTS,g233,$$<, -s -S), $$<, 3600)
 endef
 
 $(foreach case,$(TEST_CASES),$(eval $(call case_template,$(case))))

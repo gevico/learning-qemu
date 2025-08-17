@@ -2,6 +2,8 @@
 
     .text
     .global _start
+    .global crt_abort
+
 _start:
     lla     t0, trap
     csrw    mtvec, t0
@@ -20,6 +22,20 @@ _start:
     j       _exit
 
 _init_bsp:
+    addi    sp, sp, -32
+    sd      t0, 16(sp)
+    sd      t1, 8(sp)
+    sd      t2, 0(sp)
+    li      t2, 0x800000000024112d
+    csrw    0x301, t2
+    li      t0, 0x2200
+    csrr    t1, mstatus
+    or      t1, t1, t0
+    csrw    mstatus, t1
+    ld      t2, 0(sp)
+    ld      t1, 8(sp)
+    ld      t0, 16(sp)
+    addi    sp, sp, 32
     ret
 
 trap:
@@ -34,6 +50,7 @@ trap:
     csrw    mepc, t0
     mret
 
+crt_abort:
 fail:
     li    a0, 1
 

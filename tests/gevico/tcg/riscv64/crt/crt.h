@@ -21,6 +21,19 @@
     _id;                                         \
 })
 
+#define crt_assert(condition) do {              \
+    if (!(condition)) {                         \
+        printf("Assertion failed: %s\n"         \
+               "File: %s\n"                     \
+               "Line: %d\n",                    \
+               #condition, __FILE__, __LINE__); \
+        crt_abort();                            \
+        }                                       \
+    } while(0)
+
+/* CRT */
+void crt_abort(void);
+
 /* Memory */
 void *memset(void *s, int c, size_t n);
 void *memcpy(void *dest, const void *src, size_t n);

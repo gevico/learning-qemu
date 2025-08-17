@@ -2,6 +2,6 @@
 
 int main(void)
 {
-    printf("Hello, RISC-V Virtio Board\n");
+    printf("Hello, RISC-V G233 Board\n");
     return 0;
 }
